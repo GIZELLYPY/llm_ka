@@ -1,36 +1,4 @@
-# LLM Knowledge Assistant (`llm_ka`)
-
-Beginner-friendly project to extract structured metadata from StackOverflow questions using an LLM.
-
-## Learning Roadmap
-
-### Phase 1: Information Extraction
-- Prompting
-- JSON output
-- Schema validation
-- Confidence scoring
-- Failure handling
-
-### Phase 2: Knowledge Assistant (RAG)
-- Chunking
-- Embeddings
-- Vector database
-- Retrieval
-- Grounding
-
-### Phase 3: Agents
-- LangGraph
-- Tool calling
-- State
-- Memory
-- Multi-step reasoning
-
-## Real-World Use Cases
-
-1. Ticket triage and routing (Support / IT / Helpdesk)
-2. Search and knowledge-base enrichment (metadata for RAG)
-3. Analytics: identify recurring user pain points
-4. Auto-tagging and governance for data/docs/code
+# LLM Knowledge Assistant
 
 ## Project Structure
 
