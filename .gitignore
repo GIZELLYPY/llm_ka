@@ -1,0 +1,14 @@
+# env and secrets
+.env
+.venv/
+
+# data inputs and outputs
+data/stackoverflow/Answers.csv
+data/stackoverflow/Questions.csv
+data/stackoverflow/Tags.csv
+data/extracted_questions.jsonl
+data/failed_extractions.jsonl
+
+# python cache
+__pycache__/
+*.pyc
