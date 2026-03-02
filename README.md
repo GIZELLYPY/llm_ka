@@ -1,4 +1,5 @@
 # LLM Knowledge Assistant
+Texto Bruto -> Chunking -> Embeddings -> Banco de Vetores + Índice -> Busca de Similaridade -> LLM
 
 ## Project Structure
 
@@ -57,6 +58,16 @@ OPENAI_BASE_URL=https://openrouter.ai/api/v1
 OPENAI_MODEL=meta-llama/llama-3.1-8b-instruct:free
 ```
 
+### Hugging Face Token (for embedding model downloads)
+
+```env
+HF_TOKEN=your_huggingface_read_token
+```
+
+`HF_TOKEN` is used when downloading `sentence-transformers/all-MiniLM-L6-v2`.
+Without it, downloads still work but with stricter rate limits.
+For create a token (just read permission): https://huggingface.co/settings/tokens
+
 ## Run Extraction
 
 ```bash
@@ -74,6 +85,27 @@ What it does:
 ```bash
 python3 -m src.eval
 ```
+
+## Build FAISS Index (RAG Prep)
+
+```bash
+python -m src.build_index
+```
+
+What it does:
+- Loads and joins `Questions.csv` + `Answers.csv`
+- Builds text chunks (question + answer)
+- Creates embeddings with `all-MiniLM-L6-v2`
+- Builds and saves FAISS index
+- Saves metadata mapping for retrieval
+
+Generated files:
+- `data/index/faiss.index`
+- `data/index/metadata.pkl`
+
+Expected note in logs:
+- `embeddings.position_ids | UNEXPECTED`
+- This is usually harmless for this model load path and can be ignored.
 
 ## Output Format (`JSONL`)
 
