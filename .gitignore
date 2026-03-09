@@ -8,7 +8,9 @@ data/stackoverflow/Questions.csv
 data/stackoverflow/Tags.csv
 data/extracted_questions.jsonl
 data/failed_extractions.jsonl
+data
 
 # python cache
 __pycache__/
 *.pyc
+src/__init__.py
