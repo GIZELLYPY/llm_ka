@@ -1,75 +1,10 @@
-"""
-What metadata.pkl Looks Like:
-[
-  {
-    "question_id": 1040,
-    "title": "How do I delete a file which is locked by another process in C#?",
-    "type": "question"
-  },
-  {
-    "question_id": 1040,
-    "title": "How do I delete a file which is locked by another process in C#?",
-    "type": "answer",
-    "chunk_id": 0
-  },
-  {
-    "question_id": 1040,
-    "title": "How do I delete a file which is locked by another process in C#?",
-    "type": "answer",
-    "chunk_id": 1
-  },
-  {
-    "question_id": 205,
-    "title": "SQL GROUP BY with HAVING",
-    "type": "question"
-  }
-]
+"""Build and persist the retrieval index used by the RAG CLI.
 
-------------------------------------------------------------
-------------------------------------------------------------
-faiss.index Stores
-
-FAISS does not know anything about:
-
-question_id
-
-titles
-
-types
-
-chunk_id
-
-It only stores vectors.
-
-vector 0 → chunks[0] → metadata[0]
-vector 1 → chunks[1] → metadata[1]
-vector 2 → chunks[2] → metadata[2]
-vector 3 → chunks[3] → metadata[3]
-
-------------------------------------------------------------
-------------------------------------------------------------
-
-What Happens During Search? 
-
-"how do I delete a locked file in C#?"
-
-1: The query is embedded into a vector.
-2: FAISS computes L2 distance between query vector and all stored vectors
-3: FAISS returns closest vector indices: [2, 1, 0]
-4: the code map back: metadata[2], metadata[1], metadata[0]
-
-
-Which might correspond to: answer chunk 1, answer chunk 0, question chunk
-
-------------------------------------------------------------
-------------------------------------------------------------
-
-FAISS answers: “Which fragments are semantically closest?”
-
-metadata.pkl answers: “What does this fragment represent?”
-
-FAISS gives proximity.
-Metadata gives meaning.
+This module:
+1. Loads StackOverflow questions and answers.
+2. Creates question/answer text chunks with overlap.
+3. Encodes chunks into embeddings.
+4. Stores vectors in FAISS plus aligned metadata/chunk files.
 """
 
 from pathlib import Path
@@ -90,6 +25,7 @@ INDEX_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def load_data():
+    """Load and join question/answer CSVs into one dataframe."""
     questions = pd.read_csv(DATA_DIR / "Questions.csv", encoding="latin1")
     answers = pd.read_csv(DATA_DIR / "Answers.csv", encoding="latin1")
 
@@ -108,10 +44,15 @@ def load_data():
 
 
 def build_chunks(df, max_paragraphs=3, overlap=1):
+    """Create retrieval chunks and aligned metadata entries.
+
+    Each joined row yields:
+    - one question chunk
+    - multiple answer chunks using a paragraph sliding window
+    """
     chunks = []
     metadata = []
 
-    
     if overlap >= max_paragraphs:
         raise ValueError("overlap must be smaller than max_paragraphs")
 
@@ -128,22 +69,19 @@ QUESTION:
 """.strip()
 
         chunks.append(question_chunk)
-        metadata.append({
-            "question_id": qid,
-            "title": title,
-            "type": "question"
-        })
-
+        metadata.append(
+            {"question_id": qid, "title": title, "type": "question"})
 
         # Answer Chunks paragraph-based with overlap
         answer_text = row["Body_answer"]
-        paragraphs = [p.strip() for p in answer_text.split("\n\n") if p.strip()]
+        paragraphs = [p.strip()
+                      for p in answer_text.split("\n\n") if p.strip()]
 
         i = 0
         chunk_id = 0
 
         while i < len(paragraphs):
-            window = paragraphs[i:i + max_paragraphs]
+            window = paragraphs[i: i + max_paragraphs]
 
             chunk_text = f"""
 ANSWER:
@@ -153,22 +91,25 @@ ANSWER:
 """.strip()
 
             chunks.append(chunk_text)
-            metadata.append({
-                "question_id": qid,
-                "title": title,
-                "type": "answer",
-                "chunk_id": chunk_id
-            })
+            metadata.append(
+                {
+                    "question_id": qid,
+                    "title": title,
+                    "type": "answer",
+                    "chunk_id": chunk_id,
+                }
+            )
 
             chunk_id += 1
-            i += max_paragraphs - overlap  # sliding window
+            i += max_paragraphs - overlap
 
     return chunks, metadata
 
 
 def main():
+    """Build embeddings + FAISS index and save index artifacts to disk."""
     print("Loading data...")
-    df = load_data().head(500)  # start small
+    df = load_data().head(5000)  # start small to avoid overloading your machine
 
     print("Creating chunks...")
     chunks, metadata = build_chunks(df)
@@ -178,12 +119,10 @@ def main():
     )
     model = SentenceTransformer("all-MiniLM-L6-v2")
 
-    # Converts each chunk into a numeric vector.
     print("Generating embeddings...")
     embeddings = model.encode(chunks, show_progress_bar=True)
     embeddings = np.array(embeddings).astype("float32")
 
-    # Uses faiss.IndexFlatL2 (L2 distance).
     print("Build FAISS index...")
     dim = embeddings.shape[1]
     index = faiss.IndexFlatL2(dim)
